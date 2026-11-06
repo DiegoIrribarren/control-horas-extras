@@ -1,0 +1,313 @@
+:root {
+    --mapfre-red: #ff0037;
+    --page-bg: #f4f5f7;
+    --card-bg: #ffffff;
+    --text-main: #333333;
+    --text-muted: #666666;
+    --border-color: #e0e2e6;
+}
+
+/* ========================================== */
+/* ESTILOS GENERALES Y LAYOUT                 */
+/* ========================================== */
+body {
+    background-color: var(--page-bg);
+    color: var(--text-main);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    padding-top: 80px; /* Espacio para barra fija */
+}
+
+main {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Tarjetas y secciones blancas */
+section {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Títulos */
+h1, h2 {
+    color: var(--text-main);
+    font-size: 18px;
+    margin-top: 0;
+}
+
+/* Inputs, selects y campos de texto */
+input, select {
+    width: 100%;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+input:focus, select:focus {
+    border-color: var(--mapfre-red);
+}
+
+/* Etiquetas */
+label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Botones principales con el rojo MAPFRE */
+button {
+    background-color: #ffffff;
+    color: var(--mapfre-red);
+    border: 1px solid var(--mapfre-red);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    width: 100%;
+}
+
+button:hover {
+    background-color: var(--mapfre-red);
+    color: #ffffff;
+}
+
+/* ========================================== */
+/* BARRA SUPERIOR ESTILO INTRANET             */
+/* ========================================== */
+.barra-superior {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 65px;
+    background-color: #ffffff;
+    border-bottom: 3px solid var(--mapfre-red);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    z-index: 1000;
+}
+
+.logo-app {
+    background-color: var(--mapfre-red);
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.header-derecha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-ir-casos {
+    background-color: #f4f5f7;
+    color: var(--mapfre-red);
+    border: 1px solid var(--mapfre-red);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.btn-ir-casos:hover {
+    background-color: var(--mapfre-red);
+    color: #ffffff;
+}
+
+.usuario-saludo {
+    font-size: 12px;
+    color: #333333;
+    font-weight: 600;
+}
+
+/* ========================================== */
+/* COMPONENTES Y UTILIDADES DE FORMULARIO     */
+/* ========================================== */
+.fila-horarios {
+    display: flex;
+    gap: 12px;
+}
+
+.fila-horarios > div {
+    flex: 1;
+    min-width: 0; /* Evita desbordamiento en celulares */
+}
+
+.grupo-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.grupo-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.grupo-checkbox label {
+    margin: 0;
+    cursor: pointer;
+    color: var(--text-main);
+}
+
+.texto-ayuda {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+
+/* ========================================== */
+/* TARJETA DE RESUMEN (CORREGIDA)             */
+/* ========================================== */
+.tarjeta-resumen-total {
+    background-color: #fafbfc;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 10px;
+}
+
+.monto-total-container span {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-main);
+    display: block;
+}
+
+.monto-total-container p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 4px 0 15px 0;
+}
+
+.desglose-cajitas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.cajita-stat {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+}
+
+.cajita-stat span {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.cajita-stat strong {
+    font-size: 14px;
+    color: var(--text-main);
+}
+
+/* ========================================== */
+/* ESTILOS DE LA TABLA TIPO EXCEL             */
+/* ========================================== */
+.contenedor-tabla {
+    overflow-x: auto;
+}
+
+.tabla-reporte {
+    width: 100%;
+    min-width: 600px; /* Fuerza el scroll horizontal en móviles sin aplastar columnas */
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 10px;
+    background-color: #ffffff;
+}
+
+.tabla-reporte th {
+    background-color: #f1f3f5;
+    color: var(--text-main);
+    border: 1px solid #cbd5e1;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.tabla-reporte td {
+    border: 1px solid #cbd5e1;
+    padding: 8px 6px;
+    text-align: center;
+    color: var(--text-main);
+}
+
+.btn-quitar {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: bold;
+    width: auto;
+}
+
+.btn-quitar:hover {
+    background-color: #dc2626;
+    color: #ffffff;
+}
+
+/* ========================================== */
+/* RESPONSIVE MÓVIL                           */
+/* ========================================== */
+@media (max-width: 480px) {
+    body {
+        padding: 5px;
+        padding-top: 75px;
+    }
+    main {
+        gap: 12px;
+    }
+    section {
+        padding: 12px;
+    }
+    input, select, button {
+        font-size: 16px; /* Evita zoom automático en iOS/Android */
+        padding: 10px;
+    }
+    .usuario-saludo {
+        display: none; /* Oculta el saludo en pantallas muy chicas para privilegiar espacio */
+    }
+}

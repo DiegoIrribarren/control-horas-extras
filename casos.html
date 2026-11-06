@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONTROL DE CASOS Y BONO</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Barra superior corporativa -->
+    <header class="barra-superior">
+        <div class="logo-app">CONTROL EXTRAS</div>
+        <div class="header-derecha">
+            <a href="index.html" class="btn-ir-casos">← Vuelve a horas extras</a>
+            <div class="usuario-saludo">¡Hola Diego Augusto!</div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Sección 1: Resumen del Bono Trimestral (Q4) -->
+        <section>
+            <h1>Bono Trimestral (Oct - Dic)</h1>
+            
+            <div class="tarjeta-resumen-total">
+                <div class="monto-total-container">
+                    <span style="color: var(--mapfre-red);">S/ 1,000.00</span>
+                    <p>Meta estimada · Bono sujeto a cumplimiento de casos autorizados</p>
+                </div>
+
+                <!-- Progreso rápido o métricas -->
+                <div style="background-color: var(--page-bg); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600;">
+                        <span>Casos autorizados:</span>
+                        <span style="color: var(--mapfre-red);">24 / 30 (Req.)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 2: Registrar un caso para el bono -->
+        <section>
+            <h2>Registrar caso para bono</h2>
+
+            <form id="formCaso">
+                <!-- Fila: Fecha y Tipo -->
+                <div class="fila-horarios">
+                    <div>
+                        <label for="inputFechaCaso">Fecha</label>
+                        <input type="date" id="inputFechaCaso" required>
+                    </div>
+                    <div>
+                        <label for="selectTipoCaso">Tipo</label>
+                        <select id="selectTipoCaso">
+                            <option value="Vehicular">Vehicular</option>
+                            <option value="Robo">Robo</option>
+                            <option value="Daños">Daños</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Número de caso / Siniestro -->
+                <div>
+                    <label for="inputNumCaso">Número de caso / Asistencia</label>
+                    <input type="text" id="inputNumCaso" placeholder="Ej. 89675933" required>
+                </div>
+
+                <!-- ¿Autorizado? -->
+                <div>
+                    <label for="selectAutorizado">¿Autorizado?</label>
+                    <select id="selectAutorizado">
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+
+                <!-- Botón Guardar -->
+                <button type="submit" style="margin-top: 10px;">Guardar caso</button>
+            </form>
+        </section>
+
+        <!-- Sección 3: Casos registrados en el trimestre (Formato Tabla) -->
+        <section>
+            <h2>Casos registrados </h2>
+            <p class="texto-ayuda">Historial de siniestros evaluados para la métrica del bono</p>
+
+            <div class="contenedor-tabla">
+                <table class="tabla-reporte">
+                    <thead>
+                        <tr>
+                            <th>FECHA</th>
+                            <th>N° CASO</th>
+                            <th>TIPO</th>
+                            <th>ESTADO</th>
+                            <th>ELIMINAR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCasosCuerpo">
+                        <!-- Fila de ejemplo 1 -->
+                        <tr>
+                            <td>29/10/2026</td>
+                            <td>#89675933</td>
+                            <td>Vehicular</td>
+                            <td><span style="background-color: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Autorizado: Sí</span></td>
+                            <td><button class="btn-quitar" type="button">X</button></td>
+                        </tr>
+                        <!-- Fila de ejemplo 2 -->
+                        <tr>
+                            <td>28/10/2026</td>
+                            <td>#89675041</td>
+                            <td>Vehicular</td>
+                            <td><span style="background-color: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Autorizado: No</span></td>
+                            <td><button class="btn-quitar" type="button">X</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Enlace rápido para volver a Horas Extras -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="index.html" style="color: var(--mapfre-red); font-size: 14px; font-weight: 600; text-decoration: none;">← Ir a Control de Horas Extras</a>
+        </div>
+    </main>
+
+</body>
+</html>
