@@ -303,58 +303,135 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 8. EXPORTAR A EXCEL Y PDF
+    // 8. EXPORTAR A EXCEL (XML OFICIAL CON CABECERAS Y FIRMAS) Y PDF
     // ==========================================
     if (btnExportarExcel) {
         btnExportarExcel.addEventListener('click', () => {
-            if (registros.length === 0) {
-                alert('No hay registros activos para exportar.');
-                return;
-            }
+            const mesValue = selectMes ? selectMes.value : '2026-11';
+            const [anio, mes] = mesValue.split('-').map(Number);
+            const totalDiasMes = new Date(anio, mes, 0).getDate();
+            
+            // Nombres de meses en español para el título oficial
+            const mesesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+            const nombreMesStr = mesesNombres[mes - 1];
 
             let contenidoTabla = `
                 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                <head><meta charset="UTF-8"></head>
+                <head>
+                    <meta charset="UTF-8">
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <x:ExcelWorkbook>
+                            <x:ExcelWorksheets>
+                                <x:ExcelWorksheet>
+                                    <x:Name>Control de Horas Extras</x:Name>
+                                    <x:WorksheetOptions>
+                                        <x:DisplayGridlines/>
+                                    </x:WorksheetOptions>
+                                </x:ExcelWorksheet>
+                            </x:ExcelWorksheets>
+                        </x:ExcelWorkbook>
+                    </xml>
+                    <![endif]-->
+                </head>
                 <body>
                     <table border="1">
-                        <tr style="background-color: #ff0037; color: white; font-weight: bold; text-align: center;">
-                            <th colspan="7">REGISTRO Y CONTROL DE HORAS EXTRAS</th>
+                        <!-- TÍTULO PRINCIPAL ROJO -->
+                        <tr style="background-color: #ff0037; color: white; font-weight: bold; text-align: center; height: 30px;">
+                            <th colspan="6" style="font-size: 14px;">REGISTRO Y CONTROL DE HORAS EXTRAS - DEL 01 AL ${totalDiasMes} DE ${nombreMesStr} DEL ${anio}</th>
                         </tr>
-                        <tr style="background-color: #f1f3f5; font-weight: bold; text-align: center;">
+                        <!-- DATOS PERSONALES -->
+                        <tr style="font-weight: bold; height: 24px;">
+                            <td colspan="4" style="background-color: #ffffff; text-align: left; padding-left: 8px;">APELLIDOS Y NOMBRES: DIEGO VASQUEZ IRIBARREN</td>
+                            <td colspan="2" style="background-color: #ffffff; text-align: left; padding-left: 8px;">DNI: 45866530</td>
+                        </tr>
+                        <!-- CABECERAS DE TABLA -->
+                        <tr style="background-color: #f1f3f5; font-weight: bold; text-align: center; height: 26px;">
                             <th>FECHA</th>
-                            <th>ZONA-BASE</th>
+                            <th>ZONA -BASE</th>
                             <th>HORARIO NORMAL</th>
                             <th>HORARIO EXTRA EN ZONA</th>
-                            <th>TOTAL DE H.E.</th>
+                            <th>TOTAL DE HORAS EXTRAS</th>
                             <th>OBSERVACIÓN</th>
-                            <th>PAGO ESTIMADO (S/)</th>
                         </tr>
             `;
 
-            registros.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(reg => {
-                const partesFecha = reg.fecha.split('-');
-                const fechaFormateada = partesFecha.length === 3 ? `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}` : reg.fecha;
+            let sumaTotalHoras = 0;
 
-                contenidoTabla += `
-                    <tr>
-                        <td style="text-align: center;">${fechaFormateada}</td>
-                        <td>${reg.zona}</td>
-                        <td style="text-align: center;">${reg.horarioNormal}</td>
-                        <td style="text-align: center;">${reg.horarioExtra}</td>
-                        <td style="text-align: center;">${reg.esDescanso ? '-' : reg.totalHoras + ' h'}</td>
-                        <td>${reg.observacion}</td>
-                        <td style="text-align: right;">${reg.esDescanso ? 'S/ 0.00' : 'S/ ' + reg.pagoTotal.toFixed(2)}</td>
-                    </tr>
-                `;
-            });
+            for (let dia = 1; dia <= totalDiasMes; dia++) {
+                const diaStr = String(dia).padStart(2, '0');
+                const mesStr = String(mes).padStart(2, '0');
+                const fechaIso = `${anio}-${mesStr}-${diaStr}`;
+                const fechaFormateada = `${diaStr}-${mes.toString().toLowerCase()}-${anio.toString().slice(-2)}`; // Ej: 01-sep-26 (ajustable)
 
-            contenidoTabla += `</table></body></html>`;
+                // Formato de fecha limpio tipo dd-mmm-yy
+                const mesesCortos = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+                const fechaTexto = `${diaStr}-${mesesCortos[mes - 1]}-${anio.toString().slice(-2)}`;
+
+                const reg = registros.find(r => r.fecha === fechaIso);
+
+                if (reg) {
+                    if (reg.esDescanso) {
+                        contenidoTabla += `
+                            <tr>
+                                <td style="text-align: center;">${fechaTexto}</td>
+                                <td colspan="4" style="text-align: center; font-weight: bold; color: #64748b;">DÍA DE DESCANSO</td>
+                                <td>${reg.observacion || '-'}</td>
+                            </tr>
+                        `;
+                    } else {
+                        sumaTotalHoras += reg.totalHoras || 0;
+                        contenidoTabla += `
+                            <tr>
+                                <td style="text-align: center;">${fechaTexto}</td>
+                                <td style="text-align: center;">${reg.zona || '-'}</td>
+                                <td style="text-align: center;">${reg.horarioNormal || '-'}</td>
+                                <td style="text-align: center;">${reg.horarioExtra || '-'}</td>
+                                <td style="text-align: center;">${reg.totalHoras > 0 ? reg.totalHoras + ' h' : '-'}</td>
+                                <td>${reg.observacion || '-'}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    contenidoTabla += `
+                        <tr>
+                            <td style="text-align: center;">${fechaTexto}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    `;
+                }
+            }
+
+            // FILA TOTAL
+            contenidoTabla += `
+                <tr style="font-weight: bold; background-color: #f8fafc;">
+                    <td style="text-align: center;">TOTAL</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td style="text-align: center;">${sumaTotalHoras > 0 ? sumaTotalHoras + ' h' : ''}</td>
+                    <td></td>
+                </tr>
+                <!-- ESPACIOS PARA FIRMAS -->
+                <tr style="height: 40px;"><td colspan="6"></td></tr>
+                <tr>
+                    <td colspan="3" style="text-align: center; border-top: 1px solid #000; font-weight: bold;">Vº Bº COORDINADOR</td>
+                    <td colspan="3" style="text-align: center; border-top: 1px solid #000; font-weight: bold;">PROCURADOR</td>
+                </tr>
+                </table>
+                </body>
+                </html>
+            `;
 
             const blob = new Blob([contenidoTabla], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Control_Horas_Extras.xls';
+            a.download = `Control_Horas_Extras_${mesValue}.xls`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -363,61 +440,112 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnExportarPdf) {
         btnExportarPdf.addEventListener('click', () => {
-            if (registros.length === 0) {
-                alert('No hay registros activos para exportar.');
-                return;
-            }
+            const mesValue = selectMes ? selectMes.value : '2026-11';
+            const [anio, mes] = mesValue.split('-').map(Number);
+            const totalDiasMes = new Date(anio, mes, 0).getDate();
+            const mesesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+            const nombreMesStr = mesesNombres[mes - 1];
+            const mesesCortos = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
             let ventanaPdf = window.open('', '_blank');
             let htmlPdf = `
                 <html>
                 <head>
-                    <title>Reporte de Horas Extras</title>
+                    <title>Control de Horas Extras</title>
                     <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-                        h2 { text-align: center; color: #ff0037; margin-bottom: 5px; }
-                        p { text-align: center; font-size: 12px; color: #666; margin-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-                        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
-                        th { background-color: #ff0037; color: white; }
-                        tr:nth-child(even) { background-color: #f8fafc; }
+                        body { font-family: Arial, sans-serif; padding: 15px; color: #000; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                        th, td { border: 1px solid #000; padding: 4px; text-align: center; }
+                        .titulo { background-color: #ff0037; color: white; font-weight: bold; font-size: 12px; padding: 8px; text-align: center; }
+                        .datos { font-weight: bold; text-align: left; padding: 6px; background: #fff; }
+                        .cabecera-tabla { background-color: #f1f3f5; font-weight: bold; }
+                        .firma-container { margin-top: 50px; width: 100%; display: flex; justify-content: space-around; }
+                        .firma-linea { width: 35%; border-top: 1px solid #000; text-align: center; padding-top: 5px; font-weight: bold; font-size: 11px; }
                     </style>
                 </head>
                 <body>
-                    <h2>CONTROL DE HORAS EXTRAS - ASESORES</h2>
-                    <p>Reporte oficial generado por el sistema</p>
                     <table>
-                        <thead>
-                            <tr>
-                                <th>FECHA</th>
-                                <th>ZONA-BASE</th>
-                                <th>HORARIO NORMAL</th>
-                                <th>HORARIO EXTRA EN ZONA</th>
-                                <th>TOTAL H.E.</th>
-                                <th>OBSERVACIÓN</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                        <tr>
+                            <td colspan="6" class="titulo">REGISTRO Y CONTROL DE HORAS EXTRAS - DEL 01 AL ${totalDiasMes} DE ${nombreMesStr} DEL ${anio}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" class="datos">APELLIDOS Y NOMBRES: DIEGO VASQUEZ IRIBARREN</td>
+                            <td colspan="2" class="datos">DNI: 45866530</td>
+                        </tr>
+                        <tr class="cabecera-tabla">
+                            <th>FECHA</th>
+                            <th>ZONA -BASE</th>
+                            <th>HORARIO NORMAL</th>
+                            <th>HORARIO EXTRA EN ZONA</th>
+                            <th>TOTAL DE HORAS EXTRAS</th>
+                            <th>OBSERVACIÓN</th>
+                        </tr>
             `;
 
-            registros.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(reg => {
-                const partesFecha = reg.fecha.split('-');
-                const fechaFormateada = partesFecha.length === 3 ? `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}` : reg.fecha;
+            let sumaTotalHoras = 0;
 
-                htmlPdf += `
-                    <tr>
-                        <td>${fechaFormateada}</td>
-                        <td>${reg.zona}</td>
-                        <td>${reg.horarioNormal}</td>
-                        <td>${reg.horarioExtra}</td>
-                        <td>${reg.esDescanso ? 'DESCANSO' : reg.totalHoras + ' h'}</td>
-                        <td>${reg.observacion}</td>
-                    </tr>
-                `;
-            });
+            for (let dia = 1; dia <= totalDiasMes; dia++) {
+                const diaStr = String(dia).padStart(2, '0');
+                const mesStr = String(mes).padStart(2, '0');
+                const fechaIso = `${anio}-${mesStr}-${diaStr}`;
+                const fechaTexto = `${diaStr}-${mesesCortos[mes - 1]}-${anio.toString().slice(-2)}`;
+
+                const reg = registrations = registros.find(r => r.fecha === fechaIso);
+
+                if (reg) {
+                    if (reg.esDescanso) {
+                        htmlPdf += `
+                            <tr>
+                                <td>${fechaTexto}</td>
+                                <td colspan="4" style="font-weight: bold; color: #555;">DÍA DE DESCANSO</td>
+                                <td>${reg.observacion || '-'}</td>
+                            </tr>
+                        `;
+                    } else {
+                        sumaTotalHoras += reg.totalHoras || 0;
+                        htmlPdf += `
+                            <tr>
+                                <td>${fechaTexto}</td>
+                                <td>${reg.zona || '-'}</td>
+                                <td>${reg.horarioNormal || '-'}</td>
+                                <td>${reg.horarioExtra || '-'}</td>
+                                <td>${reg.totalHoras > 0 ? reg.totalHoras + ' h' : '-'}</td>
+                                <td>${reg.observacion || '-'}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    htmlPdf += `
+                        <tr>
+                            <td>${fechaTexto}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    `;
+                }
+            }
 
             htmlPdf += `
-                        </tbody>
+                        <tr style="font-weight: bold; background-color: #f8fafc;">
+                            <td>TOTAL</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>${sumaTotalHoras > 0 ? sumaTotalHoras + ' h' : ''}</td>
+                            <td></td>
+                        </tr>
+                    </table>
+
+                    <br><br><br><br>
+                    <table style="border: none; width: 100%;">
+                        <tr style="border: none;">
+                            <td style="border: none; width: 40%; border-top: 1px solid #000; font-weight: bold; padding-top: 8px;">Vº Bº COORDINADOR</td>
+                            <td style="border: none; width: 20%;"></td>
+                            <td style="border: none; width: 40%; border-top: 1px solid #000; font-weight: bold; padding-top: 8px;">PROCURADOR</td>
+                        </tr>
                     </table>
                 </body>
                 </html>
@@ -432,7 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         });
     }
-
     // Inicializar al cargar la página
     recalcularTodo();
 });
