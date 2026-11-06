@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnExportarExcel = document.getElementById('btnExportarExcel');
     const btnExportarPdf = document.getElementById('btnExportarPdf');
 
+    // Elementos para el manejo de Descanso
+    const selectEstadoDia = document.getElementById('selectEstadoDia');
+    const bloqueHorariosYExtra = document.getElementById('bloqueHorariosYExtra');
+
     // ==========================================
     // 2. RECUPERAR DATOS GUARDADOS (LOCALSTORAGE)
     // ==========================================
@@ -49,6 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.value = valor;
         });
     });
+
+    // ==========================================
+    // 3.1 CONTROL VISUAL DE ESTADO (DESCANSO VS TURNO)
+    // ==========================================
+    if (selectEstadoDia && bloqueHorariosYExtra) {
+        selectEstadoDia.addEventListener('change', (e) => {
+            if (e.target.value === 'descanso') {
+                bloqueHorariosYExtra.style.display = 'none';
+            } else {
+                bloqueHorariosYExtra.style.display = 'block';
+            }
+        });
+    }
 
     // ==========================================
     // 4. LÓGICA DE ASIGNACIÓN FAMILIAR Y VALOR HORA
@@ -81,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectMes.addEventListener('change', recalcularTodo);
     }
 
-   // ==========================================
+    // ==========================================
     // 5. PROCESAR Y GUARDAR UN NUEVO TURNO
     // ==========================================
     formRegistro.addEventListener('submit', (e) => {
@@ -95,10 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const extraInicio = document.getElementById('inputExtraInicio').value;
         const extraFin = document.getElementById('inputExtraFin').value;
         
-        // Validación segura del checkbox de descanso
-        const checkDescansoEl = document.getElementById('checkDescanso');
-        const esDescanso = checkDescansoEl ? checkDescansoEl.checked : false;
-
+        const esDescanso = selectEstadoDia ? selectEstadoDia.value === 'descanso' : false;
         const observacion = document.getElementById('inputObs').value;
 
         if (!fecha) {
@@ -119,14 +133,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let hFeriado = 0;
         let horarioExtraStr = '';
 
-        // Si marcó día de descanso o si ingresó horas extras
         if (!esDescanso && extraInicio && extraFin) {
-            // Calcular diferencia en formato 24h
             hExtras = calcularDiferenciaHoras(extraInicio, extraFin);
 
-            // REGLA ESPECIAL: Si las horas extras superan las 6h, descuenta automáticamente 1 hora de refrigerio
             if (hExtras > 6) {
-                hExtras -= 1;
+                hExtras -= 1; // Descuento de refrigerio
             }
 
             const valorHora = calcularValorHora();
@@ -136,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const mult = parseFloat(inputMultiplicadorFeriado.value) || 2;
                 pagoTotal = hFeriado * valorHora * mult;
             } else {
-                // Día normal: Primeras 2 horas al 25% (1.25), desde la 3ra al 35% (1.35)
                 if (hExtras <= 2) {
                     h25 = hExtras;
                     pagoTotal = h25 * (valorHora * 1.25);
@@ -149,14 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
             horarioExtraStr = `${extraInicio} – ${extraFin}`;
         }
 
-        // Si ya existía un registro en esta misma fecha, lo actualizamos o reemplazamos
+        // Reemplazar o actualizar si ya existe un registro en la misma fecha
         registros = registros.filter(r => r.fecha !== fecha);
 
         const nuevoRegistro = {
             id: Date.now(),
             fecha,
             zona: esDescanso ? 'DESCANSO' : (zona || '-'),
-            horarioNormal: `${normInicio} – ${normFin}`,
+            horarioNormal: esDescanso ? '-' : `${normInicio} – ${normFin}`,
             horarioExtra: esDescanso ? 'DÍA DE DESCANSO' : horarioExtraStr,
             totalHoras: hExtras,
             h25,
@@ -164,16 +174,17 @@ document.addEventListener('DOMContentLoaded', () => {
             hFeriado,
             pagoTotal,
             esDescanso,
-            observacion: esDescanso ? 'Día de descanso médico / legal' : (observacion || (hExtras > 0 ? '-' : ''))
+            observacion: esDescanso ? (observacion || 'Día de descanso') : (observacion || (hExtras > 0 ? '-' : ''))
         };
 
         registros.push(nuevoRegistro);
         guardarYActualizar();
         formRegistro.reset();
         
-        // Mantener valores por defecto cómodos
+        // Restaurar valores por defecto y re-mostrar los bloques si se ocultaron
         document.getElementById('inputNormInicio').value = "07:00";
         document.getElementById('inputNormFin').value = "15:00";
+        if (bloqueHorariosYExtra) bloqueHorariosYExtra.style.display = 'block';
     });
 
     // ==========================================
@@ -186,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let minutosInicio = hInicio * 60 + mInicio;
         let minutosFin = hFin * 60 + mFin;
 
-        // Si pasa de medianoche (ej. entra a las 22:00 y sale a las 04:00 del día siguiente)
         if (minutosFin <= minutosInicio) {
             minutosFin += 24 * 60;
         }

@@ -54,7 +54,7 @@
             </div>
         </section>
 
-        <!-- Sección 2: Registrar un día -->
+       <!-- Sección 2: Registrar un día -->
         <section>
             <h2>Registrar un día</h2>
 
@@ -74,37 +74,50 @@
                     </div>
                 </div>
 
-                <!-- Zona-base -->
+                <!-- Nuevo: Selector de Estado (Laborable o Descanso) -->
                 <div>
-                    <label for="inputZona">Zona-base</label>
-                    <input type="text" id="inputZona" placeholder="Ej. Surco" >
+                    <label for="selectEstadoDia">Estado del día</label>
+                    <select id="selectEstadoDia">
+                        <option value="laborable">Turno / Horas Extras</option>
+                        <option value="descanso">Día de Descanso (Libre)</option>
+                    </select>
                 </div>
 
-               <!-- Turno normal -->
-<div class="fila-horarios">
-    <div>
-        <label for="inputNormInicio">Inicio</label>
-        <input type="text" id="inputNormInicio" value="07:00" placeholder="07:00" maxlength="5">
-    </div>
-    <div>
-        <label for="inputNormFin">Fin</label>
-        <input type="text" id="inputNormFin" value="15:00" placeholder="15:00" maxlength="5">
-    </div>
-</div>
+                <!-- Contenedor que se ocultará si selecciona Descanso -->
+                <div id="bloqueHorariosYExtra">
+                    <!-- Zona-base -->
+                    <div>
+                        <label for="inputZona">Zona-base</label>
+                        <input type="text" id="inputZona" placeholder="Ej. Surco">
+                    </div>
 
-<!-- Turno extra -->
-<div class="fila-horarios">
-    <div>
-        <label for="inputExtraInicio">Inicio</label>
-        <input type="text" id="inputExtraInicio" placeholder="15:00" maxlength="5">
-    </div>
-    <div>
-        <label for="inputExtraFin">Fin</label>
-        <input type="text" id="inputExtraFin" placeholder="23:00" maxlength="5">
-    </div>
-</div>
+                    <!-- Turno normal -->
+                    <div class="fila-horarios">
+                        <div>
+                            <label for="inputNormInicio">Inicio</label>
+                            <input type="text" id="inputNormInicio" value="07:00" placeholder="07:00" maxlength="5">
+                        </div>
+                        <div>
+                            <label for="inputNormFin">Fin</label>
+                            <input type="text" id="inputNormFin" value="15:00" placeholder="15:00" maxlength="5">
+                        </div>
+                    </div>
+
+                    <!-- Turno extra -->
+                    <div class="fila-horarios">
+                        
+                        <div>
+                            <label for="">Horas Extras</label>
+                            <label for="inputExtraInicio">Inicio</label>
+                            <input type="text" id="inputExtraInicio" placeholder="15:00" maxlength="5">
+                        </div>
+                        <div>
+                            <label for="inputExtraFin">Fin</label>
+                            <input type="text" id="inputExtraFin" placeholder="23:00" maxlength="5">
+                        </div>
+                    </div>
                     <p class="texto-ayuda">Formato 24h (ej. 15:00 a 23:00). Si pasa de medianoche, coloca la hora real de salida.</p>
-                </fieldset>
+                </div>
                     
                 <!-- Observación opcional -->
                 <div>
