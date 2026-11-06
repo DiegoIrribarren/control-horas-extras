@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 0. CONFIGURACIÓN
     // ==========================================
-    // Versión 1: datos fijos. En la versión 2 vendrán del acceso del usuario.
     const DATOS_USUARIO = { nombre: 'DIEGO', dni: '00000000' };
 
     const CLAVE_REGISTROS = 'control_extras_registros';
@@ -64,23 +63,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 2. FORMULARIO: HORAS Y ESTADOS
     // ==========================================
-    // Autoformato 24h: solo números y los dos puntos solos
     ['inputNormInicio', 'inputNormFin', 'inputExtraInicio', 'inputExtraFin'].forEach((id) => {
-        $(id).addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (v.length > 2) v = v.substring(0, 2) + ':' + v.substring(2, 4);
-            e.target.value = v;
+        const el = $(id);
+        if (el) {
+            el.addEventListener('input', (e) => {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 2) v = v.substring(0, 2) + ':' + v.substring(2, 4);
+                e.target.value = v;
+            });
+        }
+    });
+
+    if (selectEstadoDia) {
+        selectEstadoDia.addEventListener('change', () => {
+            bloqueHorariosYExtra.style.display = selectEstadoDia.value === 'descanso' ? 'none' : 'block';
         });
-    });
+    }
 
-    selectEstadoDia.addEventListener('change', () => {
-        bloqueHorariosYExtra.style.display = selectEstadoDia.value === 'descanso' ? 'none' : 'block';
-    });
-
-    // En feriado las horas extras son opcionales
-    selectTipoDia.addEventListener('change', () => {
-        avisoExtra.textContent = selectTipoDia.value === 'Feriado' ? '(opcional)' : '(obligatorio)';
-    });
+    if (selectTipoDia && avisoExtra) {
+        selectTipoDia.addEventListener('change', () => {
+            avisoExtra.textContent = selectTipoDia.value === 'Feriado' ? '(opcional)' : '(obligatorio)';
+        });
+    }
 
     // ==========================================
     // 3. CÁLCULOS
@@ -89,7 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const basico = parseFloat(inputBasico.value) || 0;
         const asignacion = selectAsignacion.value === 'si' ? (parseFloat(inputMontoAsignacion.value) || 0) : 0;
         const valorHora = (basico + asignacion) / 240;
-        txtValorHora.textContent = `Valor de tu hora: S/ ${valorHora.toFixed(2)}`;
+        if (txtValorHora) {
+            txtValorHora.textContent = `Valor de tu hora: S/ ${valorHora.toFixed(2)}`;
+        }
         return valorHora;
     }
 
@@ -98,11 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const [hF, mF] = fin.split(':').map(Number);
         const minInicio = hI * 60 + mI;
         let minFin = hF * 60 + mF;
-        if (minFin <= minInicio) minFin += 24 * 60; // cruza medianoche
+        if (minFin <= minInicio) minFin += 24 * 60;
         return parseFloat(((minFin - minInicio) / 60).toFixed(2));
     }
 
-    // El pago se calcula al mostrar, así un cambio de sueldo se refleja en todos los días
     function pagoDe(reg, valorHora) {
         const mult = parseFloat(inputMultiplicadorFeriado.value) || 2;
         return (reg.h25 || 0) * valorHora * 1.25
@@ -113,81 +118,82 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 4. GUARDAR UN DÍA
     // ==========================================
-    formRegistro.addEventListener('submit', (e) => {
-        e.preventDefault();
+    if (formRegistro) {
+        formRegistro.addEventListener('submit', (e) => {
+            e.preventDefault();
 
-        const fecha = $('inputFecha').value;
-        const esFeriado = selectTipoDia.value === 'Feriado';
-        const esDescanso = selectEstadoDia.value === 'descanso';
-        const zona = $('inputZona').value.trim();
-        const normInicio = $('inputNormInicio').value;
-        const normFin = $('inputNormFin').value;
-        const extraInicio = $('inputExtraInicio').value;
-        const extraFin = $('inputExtraFin').value;
-        const observacion = $('inputObs').value.trim();
+            const fecha = $('inputFecha').value;
+            const esFeriado = selectTipoDia.value === 'Feriado';
+            const esDescanso = selectEstadoDia.value === 'descanso';
+            const zona = $('inputZona').value.trim();
+            const normInicio = $('inputNormInicio').value;
+            const normFin = $('inputNormFin').value;
+            const extraInicio = $('inputExtraInicio').value;
+            const extraFin = $('inputExtraFin').value;
+            const observacion = $('inputObs').value.trim();
 
-        if (!fecha) {
-            alert('Por favor selecciona una fecha.');
-            return;
-        }
-
-        let hExtras = 0, h25 = 0, h35 = 0, hFeriado = 0;
-        let horarioExtra = '';
-
-        if (!esDescanso) {
-            if (!REGEX_HORA.test(normInicio) || !REGEX_HORA.test(normFin)) {
-                alert('El turno normal debe tener horas válidas en formato 24 h (ej. 07:00).');
+            if (!fecha) {
+                alert('Por favor selecciona una fecha.');
                 return;
             }
 
-            const hayExtra = extraInicio !== '' || extraFin !== '';
+            let hExtras = 0, h25 = 0, h35 = 0, hFeriado = 0;
+            let horarioExtra = '';
 
-            if (hayExtra) {
-                if (!REGEX_HORA.test(extraInicio) || !REGEX_HORA.test(extraFin)) {
-                    alert('Completa inicio y fin de las horas extras con formato 24 h (ej. 15:00).');
+            if (!esDescanso) {
+                if (!REGEX_HORA.test(normInicio) || !REGEX_HORA.test(normFin)) {
+                    alert('El turno normal debe tener horas válidas en formato 24 h (ej. 07:00).');
                     return;
                 }
-                hExtras = calcularDiferenciaHoras(extraInicio, extraFin);
-                if (hExtras > 6) hExtras -= 1; // descuento de refrigerio
 
-                if (esFeriado) {
-                    hFeriado = hExtras;
-                } else {
-                    h25 = Math.min(hExtras, 2);
-                    h35 = Math.max(hExtras - 2, 0);
+                const hayExtra = extraInicio !== '' || extraFin !== '';
+
+                if (hayExtra) {
+                    if (!REGEX_HORA.test(extraInicio) || !REGEX_HORA.test(extraFin)) {
+                        alert('Completa inicio y fin de las horas extras con formato 24 h (ej. 15:00).');
+                        return;
+                    }
+                    hExtras = calcularDiferenciaHoras(extraInicio, extraFin);
+                    if (hExtras > 6) hExtras -= 1;
+
+                    if (esFeriado) {
+                        hFeriado = hExtras;
+                    } else {
+                        h25 = Math.min(hExtras, 2);
+                        h35 = Math.max(hExtras - 2, 0);
+                    }
+                    horarioExtra = `${extraInicio} – ${extraFin}`;
+                } else if (!esFeriado) {
+                    alert('Ingresa el horario de las horas extras. Solo en feriado son opcionales.');
+                    return;
                 }
-                horarioExtra = `${extraInicio} – ${extraFin}`;
-            } else if (!esFeriado) {
-                alert('Ingresa el horario de las horas extras. Solo en feriado son opcionales.');
-                return;
             }
-        }
 
-        // Un solo registro por fecha
-        registros = registros.filter((r) => r.fecha !== fecha);
+            registros = registros.filter((r) => r.fecha !== fecha);
 
-        let obsFinal = observacion;
-        if (esDescanso && !obsFinal) obsFinal = 'Día de descanso';
-        if (!esDescanso && esFeriado && !obsFinal) obsFinal = 'Feriado';
+            let obsFinal = observacion;
+            if (esDescanso && !obsFinal) obsFinal = 'Día de descanso';
+            if (!esDescanso && esFeriado && !obsFinal) obsFinal = 'Feriado';
 
-        registros.push({
-            id: Date.now(),
-            fecha,
-            zona: esDescanso ? 'DESCANSO' : (zona || '-'),
-            horarioNormal: esDescanso ? '-' : `${normInicio} – ${normFin}`,
-            horarioExtra: esDescanso ? 'DÍA DE DESCANSO' : horarioExtra,
-            totalHoras: hExtras,
-            h25, h35, hFeriado,
-            esDescanso,
-            esFeriado,
-            observacion: obsFinal
+            registros.push({
+                id: Date.now(),
+                fecha,
+                zona: esDescanso ? 'DESCANSO' : (zona || '-'),
+                horarioNormal: esDescanso ? '-' : `${normInicio} – ${normFin}`,
+                horarioExtra: esDescanso ? 'DÍA DE DESCANSO' : horarioExtra,
+                totalHoras: hExtras,
+                h25, h35, hFeriado,
+                esDescanso,
+                esFeriado,
+                observacion: obsFinal
+            });
+
+            guardarYActualizar();
+            formRegistro.reset();
+            bloqueHorariosYExtra.style.display = 'block';
+            if (avisoExtra) avisoExtra.textContent = '(obligatorio)';
         });
-
-        guardarYActualizar();
-        formRegistro.reset();
-        bloqueHorariosYExtra.style.display = 'block';
-        avisoExtra.textContent = '(obligatorio)';
-    });
+    }
 
     // ==========================================
     // 5. TABLA Y RESUMEN
@@ -211,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderizarTabla() {
+        if (!tablaCuerpo) return;
         tablaCuerpo.innerHTML = '';
         const [anio, mes] = selectMes.value.split('-').map(Number);
         const totalDias = new Date(anio, mes, 0).getDate();
@@ -253,19 +260,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Un solo listener para todos los botones de eliminar
-    tablaCuerpo.addEventListener('click', (e) => {
-        const btn = e.target.closest('.btn-quitar');
-        if (!btn) return;
-        registros = registros.filter((r) => r.fecha !== btn.dataset.fecha);
-        guardarYActualizar();
-    });
+    if (tablaCuerpo) {
+        tablaCuerpo.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-quitar');
+            if (!btn) return;
+            registros = registros.filter((r) => r.fecha !== btn.dataset.fecha);
+            guardarYActualizar();
+        });
+    }
 
     function actualizarResumen() {
         const valorHora = calcularValorHora();
         let soles = 0, horas = 0, t25 = 0, t35 = 0, tFer = 0;
 
-        // Solo los registros del mes elegido
         registros
             .filter((r) => !r.esDescanso && r.fecha.startsWith(selectMes.value))
             .forEach((r) => {
@@ -276,29 +283,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 tFer += r.hFeriado || 0;
             });
 
-        $('lblTotalSoles').textContent = `S/ ${soles.toFixed(2)}`;
-        $('lblTotalHoras').textContent = `${horas.toFixed(1)} h extras este mes · estimado`;
-        $('lblHoras25').textContent = `${t25.toFixed(1)} h`;
-        $('lblHoras35').textContent = `${t35.toFixed(1)} h`;
-        $('lblHorasFeriado').textContent = `${tFer.toFixed(1)} h`;
+        if ($('lblTotalSoles')) $('lblTotalSoles').textContent = `S/ ${soles.toFixed(2)}`;
+        if ($('lblTotalHoras')) $('lblTotalHoras').textContent = `${horas.toFixed(1)} h extras este mes · estimado`;
+        if ($('lblHoras25')) $('lblHoras25').textContent = `${t25.toFixed(1)} h`;
+        if ($('lblHoras35')) $('lblHoras35').textContent = `${t35.toFixed(1)} h`;
+        if ($('lblHorasFeriado')) $('lblHorasFeriado').textContent = `${tFer.toFixed(1)} h`;
     }
 
-    // Eventos de configuración
-    selectAsignacion.addEventListener('change', () => {
-        grupoMontoAsignacion.style.display = selectAsignacion.value === 'si' ? 'block' : 'none';
-        guardarConfig();
-        recalcularTodo();
-    });
-    [inputBasico, inputMontoAsignacion, inputMultiplicadorFeriado].forEach((el) => {
-        el.addEventListener('input', () => {
+    if (selectAsignacion) {
+        selectAsignacion.addEventListener('change', () => {
+            grupoMontoAsignacion.style.display = selectAsignacion.value === 'si' ? 'block' : 'none';
             guardarConfig();
             recalcularTodo();
         });
+    }
+
+    [inputBasico, inputMontoAsignacion, inputMultiplicadorFeriado].forEach((el) => {
+        if (el) {
+            el.addEventListener('input', () => {
+                guardarConfig();
+                recalcularTodo();
+            });
+        }
     });
-    selectMes.addEventListener('change', recalcularTodo);
+
+    if (selectMes) selectMes.addEventListener('change', recalcularTodo);
 
     // ==========================================
-    // 6. EXPORTAR (EXCEL Y PDF COMPARTEN LA MISMA TABLA)
+    // 6. EXPORTAR (EXCEL Y PDF)
     // ==========================================
     function esc(texto) {
         return String(texto ?? '')
@@ -354,33 +366,37 @@ document.addEventListener('DOMContentLoaded', () => {
             </table>`;
     }
 
-    $('btnExportarExcel').addEventListener('click', () => {
-        const html = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="UTF-8"></head>
-            <body>${tablaReporte()}</body></html>`;
-        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        descargar(blob, `Control_Horas_Extras_${selectMes.value}.xls`);
-    });
+    if ($('btnExportarExcel')) {
+        $('btnExportarExcel').addEventListener('click', () => {
+            const html = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><meta charset="UTF-8"></head>
+                <body>${tablaReporte()}</body></html>`;
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            descargar(blob, `Control_Horas_Extras_${selectMes.value}.xls`);
+        });
+    }
 
-    $('btnExportarPdf').addEventListener('click', () => {
-        const ventana = window.open('', '_blank');
-        if (!ventana) {
-            alert('Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio e inténtalo de nuevo.');
-            return;
-        }
-        ventana.document.write(`
-            <html><head><title>Control de Horas Extras</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 15px; color: #000; }
-                table { font-size: 10px; }
-                th, td { padding: 4px; }
-            </style></head>
-            <body>${tablaReporte()}</body></html>`);
-        ventana.document.close();
-        ventana.focus();
-        setTimeout(() => ventana.print(), 500);
-    });
+    if ($('btnExportarPdf')) {
+        $('btnExportarPdf').addEventListener('click', () => {
+            const ventana = window.open('', '_blank');
+            if (!ventana) {
+                alert('Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio e inténtalo de nuevo.');
+                return;
+            }
+            ventana.document.write(`
+                <html><head><title>Control de Horas Extras</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 15px; color: #000; }
+                    table { font-size: 10px; border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #000; padding: 4px; text-align: center; }
+                </style></head>
+                <body>${tablaReporte()}</body></html>`);
+            ventana.document.close();
+            ventana.focus();
+            setTimeout(() => ventana.print(), 500);
+        });
+    }
 
     function descargar(blob, nombre) {
         const url = URL.createObjectURL(blob);
@@ -396,48 +412,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 7. COPIA DE SEGURIDAD
     // ==========================================
-    $('btnDescargarCopia').addEventListener('click', () => {
-        const copia = {
-            registros,
-            config: JSON.parse(localStorage.getItem(CLAVE_CONFIG)) || {}
-        };
-        const blob = new Blob([JSON.stringify(copia, null, 2)], { type: 'application/json' });
-        const hoy = new Date().toISOString().slice(0, 10);
-        descargar(blob, `copia_horas_extras_${hoy}.json`);
-    });
-
-    $('btnCargarCopia').addEventListener('click', () => {
-        const selector = document.createElement('input');
-        selector.type = 'file';
-        selector.accept = '.json,application/json';
-
-        selector.addEventListener('change', () => {
-            const archivo = selector.files[0];
-            if (!archivo) return;
-
-            const lector = new FileReader();
-            lector.onload = () => {
-                try {
-                    const datos = JSON.parse(lector.result);
-                    if (!Array.isArray(datos.registros)) throw new Error('formato');
-                    if (!confirm('Esto reemplazará los datos actuales de este dispositivo. ¿Continuar?')) return;
-
-                    registros = datos.registros;
-                    if (datos.config) {
-                        localStorage.setItem(CLAVE_CONFIG, JSON.stringify(datos.config));
-                        aplicarConfig(datos.config);
-                    }
-                    guardarYActualizar();
-                    alert('Copia cargada correctamente.');
-                } catch (err) {
-                    alert('El archivo no es una copia válida.');
-                }
+    if ($('btnDescargarCopia')) {
+        $('btnDescargarCopia').addEventListener('click', () => {
+            const copia = {
+                registros,
+                config: JSON.parse(localStorage.getItem(CLAVE_CONFIG)) || {}
             };
-            lector.readAsText(archivo);
+            const blob = new Blob([JSON.stringify(copia, null, 2)], { type: 'application/json' });
+            const hoy = new Date().toISOString().slice(0, 10);
+            descargar(blob, `copia_horas_extras_${hoy}.json`);
         });
+    }
 
-        selector.click();
-    });
+    if ($('btnCargarCopia')) {
+        $('btnCargarCopia').addEventListener('click', () => {
+            const selector = document.createElement('input');
+            selector.type = 'file';
+            selector.accept = '.json,application/json';
+
+            selector.addEventListener('change', () => {
+                const archivo = selector.files[0];
+                if (!archivo) return;
+
+                const lector = new FileReader();
+                lector.onload = () => {
+                    try {
+                        const datos = JSON.parse(lector.result);
+                        if (!Array.isArray(datos.registros)) throw new Error('formato');
+                        if (!confirm('Esto reemplazará los datos actuales de este dispositivo. ¿Continuar?')) return;
+
+                        registros = datos.registros;
+                        if (datos.config) {
+                            localStorage.setItem(CLAVE_CONFIG, JSON.stringify(datos.config));
+                            aplicarConfig(datos.config);
+                        }
+                        guardarYActualizar();
+                        alert('Copia cargada correctamente.');
+                    } catch (err) {
+                        alert('El archivo no es una copia válida.');
+                    }
+                };
+                lector.readAsText(archivo);
+            });
+
+            selector.click();
+        });
+    }
 
     // ==========================================
     // 8. INICIO
