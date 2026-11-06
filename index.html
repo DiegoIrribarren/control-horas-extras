@@ -18,33 +18,32 @@
     </header>
 
     <main>
-        <!-- Sección 1: Mis horas extras -->
+        <!-- Sección 1: Resumen del mes -->
         <section>
             <h1>Mis horas extras</h1>
-            
+
             <div>
+                <label for="selectMes">Mes</label>
                 <select id="selectMes">
                     <option value="2026-11">noviembre 2026</option>
                     <option value="2026-10">octubre 2026</option>
                 </select>
             </div>
 
-            <!-- Tarjeta de Resumen -->
             <div class="tarjeta-resumen-total">
                 <div class="monto-total-container">
-                    <span id="lblTotalSoles">S/ 182.69</span>
-                    <p id="lblTotalHoras">18 h extras este mes · estimado</p>
+                    <span id="lblTotalSoles">S/ 0.00</span>
+                    <p id="lblTotalHoras">0 h extras este mes · estimado</p>
                 </div>
 
-                <!-- Desglose en 3 cajitas -->
                 <div class="desglose-cajitas">
                     <div class="cajita-stat">
                         <span>25%</span>
-                        <strong id="lblHoras25">6 h</strong>
+                        <strong id="lblHoras25">0 h</strong>
                     </div>
                     <div class="cajita-stat">
                         <span>35%</span>
-                        <strong id="lblHoras35">12 h</strong>
+                        <strong id="lblHoras35">0 h</strong>
                     </div>
                     <div class="cajita-stat">
                         <span>Feriado</span>
@@ -54,12 +53,11 @@
             </div>
         </section>
 
-       <!-- Sección 2: Registrar un día -->
+        <!-- Sección 2: Registrar un día -->
         <section>
             <h2>Registrar un día</h2>
 
             <form id="formRegistro">
-                <!-- Fila: Fecha y Tipo de día -->
                 <div class="fila-horarios">
                     <div>
                         <label for="inputFecha">Fecha</label>
@@ -74,7 +72,6 @@
                     </div>
                 </div>
 
-                <!-- Selector de Estado (Laborable o Descanso) -->
                 <div>
                     <label for="selectEstadoDia">Estado del día</label>
                     <select id="selectEstadoDia">
@@ -83,60 +80,55 @@
                     </select>
                 </div>
 
-                <!-- Contenedor que se ocultará si selecciona Descanso -->
+                <!-- Se oculta si el estado es Descanso -->
                 <div id="bloqueHorariosYExtra">
-                    <!-- Zona-base -->
-                    <div style="margin-top: 15px;">
+                    <div>
                         <label for="inputZona">Zona-base</label>
                         <input type="text" id="inputZona" placeholder="Ej. Surco">
                     </div>
 
-                    <!-- Turno normal -->
-                    <div class="fila-horarios" style="margin-top: 15px;">
+                    <span class="titulo-bloque">Turno normal</span>
+                    <div class="fila-horarios">
                         <div>
                             <label for="inputNormInicio">Inicio</label>
-                            <input type="text" id="inputNormInicio" value="07:00" placeholder="07:00" maxlength="5">
+                            <input type="text" id="inputNormInicio" value="07:00" placeholder="07:00" maxlength="5" inputmode="numeric">
                         </div>
                         <div>
                             <label for="inputNormFin">Fin</label>
-                            <input type="text" id="inputNormFin" value="15:00" placeholder="15:00" maxlength="5">
+                            <input type="text" id="inputNormFin" value="15:00" placeholder="15:00" maxlength="5" inputmode="numeric">
                         </div>
                     </div>
 
-                    <!-- Turno extra -->
-                    <div style="margin-top: 15px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 6px; color: #1e293b;">Horas Extras</label>
-                        <div class="fila-horarios">
-                            <div>
-                                <label for="inputExtraInicio">Inicio</label>
-                                <input type="text" id="inputExtraInicio" placeholder="15:00" maxlength="5">
-                            </div>
-                            <div>
-                                <label for="inputExtraFin">Fin</label>
-                                <input type="text" id="inputExtraFin" placeholder="23:00" maxlength="5">
-                            </div>
+                    <span class="titulo-bloque">Horas extras <small id="avisoExtra">(obligatorio)</small></span>
+                    <div class="fila-horarios">
+                        <div>
+                            <label for="inputExtraInicio">Inicio</label>
+                            <input type="text" id="inputExtraInicio" placeholder="15:00" maxlength="5" inputmode="numeric">
+                        </div>
+                        <div>
+                            <label for="inputExtraFin">Fin</label>
+                            <input type="text" id="inputExtraFin" placeholder="23:00" maxlength="5" inputmode="numeric">
                         </div>
                     </div>
+                    <p class="texto-ayuda">Si pasa de medianoche, escribe la hora real de fin (formato 24 h).</p>
                 </div>
 
-                <!-- Observación opcional (Fuera del bloque para que siempre sea visible) -->
-                <div style="margin-top: 15px;">
+                <div>
                     <label for="inputObs">Observación</label>
                     <input type="text" id="inputObs" placeholder="Ej. Turno regular con extensión o motivo de descanso">
                 </div>
 
-                <!-- Botón Guardar único -->
-                <button type="submit" style="margin-top: 20px; width: 100%;">Guardar día</button>
+                <button type="submit" style="margin-top: 10px; width: 100%;">Guardar día</button>
             </form>
         </section>
 
-        <!-- Sección 3: Días registrados (Formato Tabla Excel Oficial) -->
+        <!-- Sección 3: Días registrados -->
         <section>
             <h2>Días registrados</h2>
             <p class="texto-ayuda">Vista previa del formato de reporte oficial</p>
 
-            <div class="contenedor-tabla">
-                <table class="tabla-reporte">
+            <div class="contenedor-tabla" style="overflow-x: auto;">
+                <table class="tabla-reporte" style="min-width: 560px;">
                     <thead>
                         <tr>
                             <th>FECHA</th>
@@ -148,13 +140,10 @@
                             <th>ELIMINAR</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaCuerpo">
-                        <!-- Generado dinámicamente por app.js -->
-                    </tbody>
+                    <tbody id="tablaCuerpo"></tbody>
                 </table>
             </div>
 
-            <!-- Botones de Exportación -->
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button type="button" id="btnExportarExcel" style="background-color: #107c41; color: white; border: none;">📊 Exportar a Excel</button>
                 <button type="button" id="btnExportarPdf" style="background-color: var(--mapfre-red); color: white; border: none;">📄 Exportar a PDF</button>
@@ -165,13 +154,12 @@
         <section>
             <details>
                 <summary style="font-weight: 600; cursor: pointer;">Mis datos de pago</summary>
-                
+
                 <div style="margin-top: 10px;">
                     <label for="inputBasico">Sueldo básico (S/)</label>
-                    <input type="number" id="inputBasico" value="1850">
+                    <input type="number" id="inputBasico" value="1850" min="0" step="0.01">
                 </div>
 
-                <!-- ¿Tienes asignación familiar? -->
                 <div>
                     <label for="selectAsignacion">¿Recibes asignación familiar?</label>
                     <select id="selectAsignacion">
@@ -180,15 +168,14 @@
                     </select>
                 </div>
 
-                <!-- Input que aparecerá solo si selecciona "Sí" -->
                 <div id="grupoMontoAsignacion" style="display: none;">
                     <label for="inputMontoAsignacion">Monto de asignación familiar (S/)</label>
-                    <input type="number" id="inputMontoAsignacion" value="102.50">
+                    <input type="number" id="inputMontoAsignacion" value="102.50" min="0" step="0.01">
                 </div>
 
                 <div>
                     <label for="inputMultiplicadorFeriado">Pago en feriado (veces el valor de la hora)</label>
-                    <input type="number" id="inputMultiplicadorFeriado" value="2" step="0.5">
+                    <input type="number" id="inputMultiplicadorFeriado" value="2" min="1" step="0.5">
                 </div>
 
                 <p id="txtValorHora" style="font-weight: 600; margin-top: 10px;">Valor de tu hora: S/ 7.71</p>
@@ -201,13 +188,11 @@
             </details>
         </section>
 
-        <!-- Enlace para ir al control de bono -->
         <div style="text-align: center; margin-bottom: 20px;">
             <a href="casos.html" style="color: var(--mapfre-red); font-size: 14px; font-weight: 600; text-decoration: none;">Ir a Control de Bono Trimestral →</a>
         </div>
     </main>
 
-    <!-- Enlace al archivo de lógica principal -->
     <script src="js/app.js"></script>
 </body>
 </html>

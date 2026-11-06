@@ -311,3 +311,13 @@ button:hover {
         display: none; /* Oculta el saludo en pantallas muy chicas para privilegiar espacio */
     }
 }
+  .titulo-bloque {
+      display: block;
+      font-weight: 600;
+      margin: 12px 0 6px;
+  }
+
+  .titulo-bloque small {
+      font-weight: 400;
+      color: var(--text-muted);
+  }

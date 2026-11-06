@@ -1,565 +1,446 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Módulo de Horas Extras y Lógica avanzado iniciado correctamente 🚀");
 
     // ==========================================
-    // 1. SELECTORES DE ELEMENTOS DEL DOM
+    // 0. CONFIGURACIÓN
     // ==========================================
-    const inputBasico = document.getElementById('inputBasico');
-    const selectAsignacion = document.getElementById('selectAsignacion');
-    const grupoMontoAsignacion = document.getElementById('grupoMontoAsignacion');
-    const inputMontoAsignacion = document.getElementById('inputMontoAsignacion');
-    const inputMultiplicadorFeriado = document.getElementById('inputMultiplicadorFeriado');
-    const txtValorHora = document.getElementById('txtValorHora');
-    const selectMes = document.getElementById('selectMes');
+    // Versión 1: datos fijos. En la versión 2 vendrán del acceso del usuario.
+    const DATOS_USUARIO = { nombre: 'DIEGO', dni: '00000000' };
 
-    const formRegistro = document.getElementById('formRegistro');
-    const tablaCuerpo = document.getElementById('tablaCuerpo');
+    const CLAVE_REGISTROS = 'control_extras_registros';
+    const CLAVE_CONFIG = 'control_extras_config';
+    const MESES = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SETIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+    const REGEX_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-    const lblTotalSoles = document.getElementById('lblTotalSoles');
-    const lblTotalHoras = document.getElementById('lblTotalHoras');
-    const lblHoras25 = document.getElementById('lblHoras25');
-    const lblHoras35 = document.getElementById('lblHoras35');
-    const lblHorasFeriado = document.getElementById('lblHorasFeriado');
+    const $ = (id) => document.getElementById(id);
 
-    const btnExportarExcel = document.getElementById('btnExportarExcel');
-    const btnExportarPdf = document.getElementById('btnExportarPdf');
-
-    // Elementos para el manejo de Descanso
-    const selectEstadoDia = document.getElementById('selectEstadoDia');
-    const bloqueHorariosYExtra = document.getElementById('bloqueHorariosYExtra');
-
-    // ==========================================
-    // 2. RECUPERAR DATOS GUARDADOS (LOCALSTORAGE)
-    // ==========================================
-    let registros = JSON.parse(localStorage.getItem('control_extras_registros')) || [];
+    const inputBasico = $('inputBasico');
+    const selectAsignacion = $('selectAsignacion');
+    const grupoMontoAsignacion = $('grupoMontoAsignacion');
+    const inputMontoAsignacion = $('inputMontoAsignacion');
+    const inputMultiplicadorFeriado = $('inputMultiplicadorFeriado');
+    const txtValorHora = $('txtValorHora');
+    const selectMes = $('selectMes');
+    const selectTipoDia = $('selectTipoDia');
+    const selectEstadoDia = $('selectEstadoDia');
+    const bloqueHorariosYExtra = $('bloqueHorariosYExtra');
+    const avisoExtra = $('avisoExtra');
+    const formRegistro = $('formRegistro');
+    const tablaCuerpo = $('tablaCuerpo');
 
     // ==========================================
-    // 3. AUTOCOMPLETAR HORA (FORMATO 24H TEXTO)
+    // 1. DATOS GUARDADOS (LOCALSTORAGE)
     // ==========================================
-    const inputsHora = [
-        document.getElementById('inputNormInicio'),
-        document.getElementById('inputNormFin'),
-        document.getElementById('inputExtraInicio'),
-        document.getElementById('inputExtraFin')
-    ];
-
-    inputsHora.forEach(input => {
-        if (!input) return;
-        input.addEventListener('input', (e) => {
-            let valor = e.target.value.replace(/\D/g, ''); // Solo números
-            if (valor.length > 2) {
-                valor = valor.substring(0, 2) + ':' + valor.substring(2, 4);
-            }
-            e.target.value = valor;
-        });
-    });
-
-    // ==========================================
-    // 3.1 CONTROL VISUAL DE ESTADO (DESCANSO VS TURNO)
-    // ==========================================
-    if (selectEstadoDia && bloqueHorariosYExtra) {
-        selectEstadoDia.addEventListener('change', (e) => {
-            if (e.target.value === 'descanso') {
-                bloqueHorariosYExtra.style.display = 'none';
-            } else {
-                bloqueHorariosYExtra.style.display = 'block';
-            }
-        });
+    let registros = [];
+    try {
+        registros = JSON.parse(localStorage.getItem(CLAVE_REGISTROS)) || [];
+    } catch (e) {
+        registros = [];
     }
 
+    function guardarConfig() {
+        const config = {
+            basico: inputBasico.value,
+            asignacion: selectAsignacion.value,
+            montoAsignacion: inputMontoAsignacion.value,
+            multiplicador: inputMultiplicadorFeriado.value
+        };
+        localStorage.setItem(CLAVE_CONFIG, JSON.stringify(config));
+    }
+
+    function aplicarConfig(config) {
+        if (!config) return;
+        inputBasico.value = config.basico ?? inputBasico.value;
+        selectAsignacion.value = config.asignacion ?? 'no';
+        inputMontoAsignacion.value = config.montoAsignacion ?? inputMontoAsignacion.value;
+        inputMultiplicadorFeriado.value = config.multiplicador ?? inputMultiplicadorFeriado.value;
+        grupoMontoAsignacion.style.display = selectAsignacion.value === 'si' ? 'block' : 'none';
+    }
+
+    try {
+        aplicarConfig(JSON.parse(localStorage.getItem(CLAVE_CONFIG)));
+    } catch (e) { /* config dañada: se usan los valores por defecto */ }
+
     // ==========================================
-    // 4. LÓGICA DE ASIGNACIÓN FAMILIAR Y VALOR HORA
+    // 2. FORMULARIO: HORAS Y ESTADOS
     // ==========================================
-    selectAsignacion.addEventListener('change', (e) => {
-        if (e.target.value === 'si') {
-            grupoMontoAsignacion.style.display = 'block';
-        } else {
-            grupoMontoAsignacion.style.display = 'none';
-            inputMontoAsignacion.value = 0;
-        }
-        recalcularTodo();
+    // Autoformato 24h: solo números y los dos puntos solos
+    ['inputNormInicio', 'inputNormFin', 'inputExtraInicio', 'inputExtraFin'].forEach((id) => {
+        $(id).addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (v.length > 2) v = v.substring(0, 2) + ':' + v.substring(2, 4);
+            e.target.value = v;
+        });
     });
 
+    selectEstadoDia.addEventListener('change', () => {
+        bloqueHorariosYExtra.style.display = selectEstadoDia.value === 'descanso' ? 'none' : 'block';
+    });
+
+    // En feriado las horas extras son opcionales
+    selectTipoDia.addEventListener('change', () => {
+        avisoExtra.textContent = selectTipoDia.value === 'Feriado' ? '(opcional)' : '(obligatorio)';
+    });
+
+    // ==========================================
+    // 3. CÁLCULOS
+    // ==========================================
     function calcularValorHora() {
         const basico = parseFloat(inputBasico.value) || 0;
         const asignacion = selectAsignacion.value === 'si' ? (parseFloat(inputMontoAsignacion.value) || 0) : 0;
-        
-        // Fórmula oficial: (Sueldo Básico + Asignación Familiar) ÷ 240
         const valorHora = (basico + asignacion) / 240;
         txtValorHora.textContent = `Valor de tu hora: S/ ${valorHora.toFixed(2)}`;
-        
         return valorHora;
     }
 
-    inputBasico.addEventListener('input', recalcularTodo);
-    inputMontoAsignacion.addEventListener('input', recalcularTodo);
-    inputMultiplicadorFeriado.addEventListener('input', recalcularTodo);
-    if (selectMes) {
-        selectMes.addEventListener('change', recalcularTodo);
+    function calcularDiferenciaHoras(inicio, fin) {
+        const [hI, mI] = inicio.split(':').map(Number);
+        const [hF, mF] = fin.split(':').map(Number);
+        const minInicio = hI * 60 + mI;
+        let minFin = hF * 60 + mF;
+        if (minFin <= minInicio) minFin += 24 * 60; // cruza medianoche
+        return parseFloat(((minFin - minInicio) / 60).toFixed(2));
+    }
+
+    // El pago se calcula al mostrar, así un cambio de sueldo se refleja en todos los días
+    function pagoDe(reg, valorHora) {
+        const mult = parseFloat(inputMultiplicadorFeriado.value) || 2;
+        return (reg.h25 || 0) * valorHora * 1.25
+            + (reg.h35 || 0) * valorHora * 1.35
+            + (reg.hFeriado || 0) * valorHora * mult;
     }
 
     // ==========================================
-    // 5. PROCESAR Y GUARDAR UN NUEVO TURNO
+    // 4. GUARDAR UN DÍA
     // ==========================================
     formRegistro.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const fecha = document.getElementById('inputFecha').value;
-        const tipoDia = document.getElementById('selectTipoDia').value;
-        const zona = document.getElementById('inputZona').value;
-        const normInicio = document.getElementById('inputNormInicio').value;
-        const normFin = document.getElementById('inputNormFin').value;
-        const extraInicio = document.getElementById('inputExtraInicio').value;
-        const extraFin = document.getElementById('inputExtraFin').value;
-        
-        const esDescanso = selectEstadoDia ? selectEstadoDia.value === 'descanso' : false;
-        const observacion = document.getElementById('inputObs').value;
+        const fecha = $('inputFecha').value;
+        const esFeriado = selectTipoDia.value === 'Feriado';
+        const esDescanso = selectEstadoDia.value === 'descanso';
+        const zona = $('inputZona').value.trim();
+        const normInicio = $('inputNormInicio').value;
+        const normFin = $('inputNormFin').value;
+        const extraInicio = $('inputExtraInicio').value;
+        const extraFin = $('inputExtraFin').value;
+        const observacion = $('inputObs').value.trim();
 
         if (!fecha) {
             alert('Por favor selecciona una fecha.');
             return;
         }
 
-        // VALIDACIÓN: Si NO es día de descanso, las horas extras son obligatorias
-        if (!esDescanso && (!extraInicio || !extraFin)) {
-            alert('Por favor ingresa el horario de inicio y fin del turno extra para poder guardarlo.');
-            return;
-        }
+        let hExtras = 0, h25 = 0, h35 = 0, hFeriado = 0;
+        let horarioExtra = '';
 
-        let hExtras = 0;
-        let pagoTotal = 0;
-        let h25 = 0;
-        let h35 = 0;
-        let hFeriado = 0;
-        let horarioExtraStr = '';
-
-        if (!esDescanso && extraInicio && extraFin) {
-            hExtras = calcularDiferenciaHoras(extraInicio, extraFin);
-
-            if (hExtras > 6) {
-                hExtras -= 1; // Descuento de refrigerio
+        if (!esDescanso) {
+            if (!REGEX_HORA.test(normInicio) || !REGEX_HORA.test(normFin)) {
+                alert('El turno normal debe tener horas válidas en formato 24 h (ej. 07:00).');
+                return;
             }
 
-            const valorHora = calcularValorHora();
+            const hayExtra = extraInicio !== '' || extraFin !== '';
 
-            if (tipoDia === 'Feriado') {
-                hFeriado = hExtras;
-                const mult = parseFloat(inputMultiplicadorFeriado.value) || 2;
-                pagoTotal = hFeriado * valorHora * mult;
-            } else {
-                if (hExtras <= 2) {
-                    h25 = hExtras;
-                    pagoTotal = h25 * (valorHora * 1.25);
-                } else {
-                    h25 = 2;
-                    h35 = hExtras - 2;
-                    pagoTotal = (2 * (valorHora * 1.25)) + (h35 * (valorHora * 1.35));
+            if (hayExtra) {
+                if (!REGEX_HORA.test(extraInicio) || !REGEX_HORA.test(extraFin)) {
+                    alert('Completa inicio y fin de las horas extras con formato 24 h (ej. 15:00).');
+                    return;
                 }
+                hExtras = calcularDiferenciaHoras(extraInicio, extraFin);
+                if (hExtras > 6) hExtras -= 1; // descuento de refrigerio
+
+                if (esFeriado) {
+                    hFeriado = hExtras;
+                } else {
+                    h25 = Math.min(hExtras, 2);
+                    h35 = Math.max(hExtras - 2, 0);
+                }
+                horarioExtra = `${extraInicio} – ${extraFin}`;
+            } else if (!esFeriado) {
+                alert('Ingresa el horario de las horas extras. Solo en feriado son opcionales.');
+                return;
             }
-            horarioExtraStr = `${extraInicio} – ${extraFin}`;
         }
 
-        // Reemplazar o actualizar si ya existe un registro en la misma fecha
-        registros = registros.filter(r => r.fecha !== fecha);
+        // Un solo registro por fecha
+        registros = registros.filter((r) => r.fecha !== fecha);
 
-        const nuevoRegistro = {
+        let obsFinal = observacion;
+        if (esDescanso && !obsFinal) obsFinal = 'Día de descanso';
+        if (!esDescanso && esFeriado && !obsFinal) obsFinal = 'Feriado';
+
+        registros.push({
             id: Date.now(),
             fecha,
             zona: esDescanso ? 'DESCANSO' : (zona || '-'),
             horarioNormal: esDescanso ? '-' : `${normInicio} – ${normFin}`,
-            horarioExtra: esDescanso ? 'DÍA DE DESCANSO' : horarioExtraStr,
+            horarioExtra: esDescanso ? 'DÍA DE DESCANSO' : horarioExtra,
             totalHoras: hExtras,
-            h25,
-            h35,
-            hFeriado,
-            pagoTotal,
+            h25, h35, hFeriado,
             esDescanso,
-            observacion: esDescanso ? (observacion || 'Día de descanso') : (observacion || (hExtras > 0 ? '-' : ''))
-        };
+            esFeriado,
+            observacion: obsFinal
+        });
 
-        registros.push(nuevoRegistro);
         guardarYActualizar();
         formRegistro.reset();
-        
-        // Restaurar valores por defecto y re-mostrar los bloques si se ocultaron
-        document.getElementById('inputNormInicio').value = "07:00";
-        document.getElementById('inputNormFin').value = "15:00";
-        if (bloqueHorariosYExtra) bloqueHorariosYExtra.style.display = 'block';
+        bloqueHorariosYExtra.style.display = 'block';
+        avisoExtra.textContent = '(obligatorio)';
     });
 
     // ==========================================
-    // 6. FUNCIONES AUXILIARES DE CÁLCULO (24H)
-    // ==========================================
-    function calcularDiferenciaHoras(inicio, fin) {
-        const [hInicio, mInicio] = inicio.split(':').map(Number);
-        const [hFin, mFin] = fin.split(':').map(Number);
-
-        let minutosInicio = hInicio * 60 + mInicio;
-        let minutosFin = hFin * 60 + mFin;
-
-        if (minutosFin <= minutosInicio) {
-            minutosFin += 24 * 60;
-        }
-
-        const diffMinutos = minutosFin - minutosInicio;
-        return parseFloat((diffMinutos / 60).toFixed(2));
-    }
-
-    // ==========================================
-    // 7. RENDERIZAR TABLA CON TODOS LOS DÍAS DEL MES
+    // 5. TABLA Y RESUMEN
     // ==========================================
     function guardarYActualizar() {
-        localStorage.setItem('control_extras_registros', JSON.stringify(registros));
+        localStorage.setItem(CLAVE_REGISTROS, JSON.stringify(registros));
         recalcularTodo();
     }
 
     function recalcularTodo() {
         calcularValorHora();
-        renderizarTablaCompletaMes();
+        renderizarTabla();
         actualizarResumen();
     }
 
-    function renderizarTablaCompletaMes() {
+    function celda(texto, colspan) {
+        const td = document.createElement('td');
+        td.textContent = texto;
+        if (colspan) td.colSpan = colspan;
+        return td;
+    }
+
+    function renderizarTabla() {
         tablaCuerpo.innerHTML = '';
+        const [anio, mes] = selectMes.value.split('-').map(Number);
+        const totalDias = new Date(anio, mes, 0).getDate();
+        const valorHora = calcularValorHora();
 
-        const mesValue = selectMes ? selectMes.value : '2026-11';
-        const [anio, mes] = mesValue.split('-').map(Number);
-
-        const totalDiasMes = new Date(anio, mes, 0).getDate();
-
-        for (let dia = 1; dia <= totalDiasMes; dia++) {
-            const diaStr = String(dia).padStart(2, '0');
-            const mesStr = String(mes).padStart(2, '0');
-            const fechaIso = `${anio}-${mesStr}-${diaStr}`;
-            const fechaFormateada = `${diaStr}/${mesStr}/${anio}`;
-
-            const reg = registros.find(r => r.fecha === fechaIso);
+        for (let dia = 1; dia <= totalDias; dia++) {
+            const dd = String(dia).padStart(2, '0');
+            const mm = String(mes).padStart(2, '0');
+            const fechaIso = `${anio}-${mm}-${dd}`;
+            const reg = registros.find((r) => r.fecha === fechaIso);
             const tr = document.createElement('tr');
 
-            if (reg) {
-                if (reg.esDescanso) {
-                    tr.innerHTML = `
-                        <td>${fechaFormateada}</td>
-                        <td colspan="4" style="font-weight: bold; color: var(--text-muted); background-color: #f8fafc;">DÍA DE DESCANSO</td>
-                        <td>${reg.observacion}</td>
-                        <td><button class="btn-quitar" type="button" data-fecha="${reg.fecha}">X</button></td>
-                    `;
-                } else {
-                    tr.innerHTML = `
-                        <td>${fechaFormateada}</td>
-                        <td>${reg.zona || ''}</td>
-                        <td>${reg.horarioNormal || ''}</td>
-                        <td>${reg.horarioExtra || ''}</td>
-                        <td>${reg.totalHoras > 0 ? `${reg.totalHoras} h (S/ ${reg.pagoTotal.toFixed(2)})` : ''}</td>
-                        <td>${reg.observacion || ''}</td>
-                        <td><button class="btn-quitar" type="button" data-fecha="${reg.fecha}">X</button></td>
-                    `;
-                }
+            tr.appendChild(celda(`${dd}/${mm}/${anio}`));
+
+            if (!reg) {
+                for (let i = 0; i < 6; i++) tr.appendChild(celda(''));
             } else {
-                tr.innerHTML = `
-                    <td>${fechaFormateada}</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                `;
+                if (reg.esDescanso) {
+                    const td = celda('DÍA DE DESCANSO', 4);
+                    td.style.fontWeight = 'bold';
+                    tr.appendChild(td);
+                } else {
+                    tr.appendChild(celda(reg.zona || ''));
+                    tr.appendChild(celda(reg.horarioNormal || ''));
+                    tr.appendChild(celda(reg.horarioExtra || ''));
+                    tr.appendChild(celda(reg.totalHoras > 0 ? `${reg.totalHoras} h (S/ ${pagoDe(reg, valorHora).toFixed(2)})` : ''));
+                }
+                tr.appendChild(celda(reg.observacion || ''));
+
+                const tdBtn = document.createElement('td');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-quitar';
+                btn.textContent = 'X';
+                btn.dataset.fecha = reg.fecha;
+                tdBtn.appendChild(btn);
+                tr.appendChild(tdBtn);
             }
             tablaCuerpo.appendChild(tr);
         }
-
-        document.querySelectorAll('.btn-quitar').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const fechaEliminar = e.target.getAttribute('data-fecha');
-                registros = registros.filter(r => r.fecha !== fechaEliminar);
-                guardarYActualizar();
-            });
-        });
     }
+
+    // Un solo listener para todos los botones de eliminar
+    tablaCuerpo.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-quitar');
+        if (!btn) return;
+        registros = registros.filter((r) => r.fecha !== btn.dataset.fecha);
+        guardarYActualizar();
+    });
 
     function actualizarResumen() {
-        let sumaSoles = 0;
+        const valorHora = calcularValorHora();
+        let soles = 0, horas = 0, t25 = 0, t35 = 0, tFer = 0;
+
+        // Solo los registros del mes elegido
+        registros
+            .filter((r) => !r.esDescanso && r.fecha.startsWith(selectMes.value))
+            .forEach((r) => {
+                soles += pagoDe(r, valorHora);
+                horas += r.totalHoras || 0;
+                t25 += r.h25 || 0;
+                t35 += r.h35 || 0;
+                tFer += r.hFeriado || 0;
+            });
+
+        $('lblTotalSoles').textContent = `S/ ${soles.toFixed(2)}`;
+        $('lblTotalHoras').textContent = `${horas.toFixed(1)} h extras este mes · estimado`;
+        $('lblHoras25').textContent = `${t25.toFixed(1)} h`;
+        $('lblHoras35').textContent = `${t35.toFixed(1)} h`;
+        $('lblHorasFeriado').textContent = `${tFer.toFixed(1)} h`;
+    }
+
+    // Eventos de configuración
+    selectAsignacion.addEventListener('change', () => {
+        grupoMontoAsignacion.style.display = selectAsignacion.value === 'si' ? 'block' : 'none';
+        guardarConfig();
+        recalcularTodo();
+    });
+    [inputBasico, inputMontoAsignacion, inputMultiplicadorFeriado].forEach((el) => {
+        el.addEventListener('input', () => {
+            guardarConfig();
+            recalcularTodo();
+        });
+    });
+    selectMes.addEventListener('change', recalcularTodo);
+
+    // ==========================================
+    // 6. EXPORTAR (EXCEL Y PDF COMPARTEN LA MISMA TABLA)
+    // ==========================================
+    function esc(texto) {
+        return String(texto ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function tablaReporte() {
+        const [anio, mes] = selectMes.value.split('-').map(Number);
+        const totalDias = new Date(anio, mes, 0).getDate();
+        const td = 'style="text-align:center;"';
         let sumaHoras = 0;
-        let total25 = 0;
-        let total35 = 0;
-        let totalFeriado = 0;
+        let filas = '';
 
-        registros.forEach(reg => {
-            if (!reg.esDescanso) {
-                sumaSoles += reg.pagoTotal;
-                sumaHoras += reg.totalHoras;
-                total25 += reg.h25;
-                total35 += reg.h35;
-                totalFeriado += reg.hFeriado;
+        for (let dia = 1; dia <= totalDias; dia++) {
+            const dd = String(dia).padStart(2, '0');
+            const fechaIso = `${anio}-${String(mes).padStart(2, '0')}-${dd}`;
+            const fechaTxt = `${dd}-${MESES_CORTOS[mes - 1]}-${String(anio).slice(-2)}`;
+            const reg = registros.find((r) => r.fecha === fechaIso);
+
+            if (reg && reg.esDescanso) {
+                filas += `<tr><td ${td}>${fechaTxt}</td><td colspan="4" ${td}><b>DÍA DE DESCANSO</b></td><td>${esc(reg.observacion) || '-'}</td></tr>`;
+            } else if (reg) {
+                sumaHoras += reg.totalHoras || 0;
+                filas += `<tr><td ${td}>${fechaTxt}</td><td ${td}>${esc(reg.zona) || '-'}</td><td ${td}>${esc(reg.horarioNormal) || '-'}</td><td ${td}>${esc(reg.horarioExtra) || '-'}</td><td ${td}>${reg.totalHoras > 0 ? reg.totalHoras + ' h' : '-'}</td><td>${esc(reg.observacion) || '-'}</td></tr>`;
+            } else {
+                filas += `<tr><td ${td}>${fechaTxt}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
             }
-        });
+        }
 
-        lblTotalSoles.textContent = `S/ ${sumaSoles.toFixed(2)}`;
-        lblTotalHoras.textContent = `${sumaHoras.toFixed(1)} h extras este mes · estimado`;
-        lblHoras25.textContent = `${total25.toFixed(1)} h`;
-        lblHoras35.textContent = `${total35.toFixed(1)} h`;
-        lblHorasFeriado.textContent = `${totalFeriado.toFixed(1)} h`;
-    }
-
-    // ==========================================
-    // 8. EXPORTAR A EXCEL (XML OFICIAL CON CABECERAS Y FIRMAS) Y PDF
-    // ==========================================
-    if (btnExportarExcel) {
-        btnExportarExcel.addEventListener('click', () => {
-            const mesValue = selectMes ? selectMes.value : '2026-11';
-            const [anio, mes] = mesValue.split('-').map(Number);
-            const totalDiasMes = new Date(anio, mes, 0).getDate();
-            
-            // Nombres de meses en español para el título oficial
-            const mesesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
-            const nombreMesStr = mesesNombres[mes - 1];
-
-            let contenidoTabla = `
-                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                <head>
-                    <meta charset="UTF-8">
-                    <!--[if gte mso 9]>
-                    <xml>
-                        <x:ExcelWorkbook>
-                            <x:ExcelWorksheets>
-                                <x:ExcelWorksheet>
-                                    <x:Name>Control de Horas Extras</x:Name>
-                                    <x:WorksheetOptions>
-                                        <x:DisplayGridlines/>
-                                    </x:WorksheetOptions>
-                                </x:ExcelWorksheet>
-                            </x:ExcelWorksheets>
-                        </x:ExcelWorkbook>
-                    </xml>
-                    <![endif]-->
-                </head>
-                <body>
-                    <table border="1">
-                        <!-- TÍTULO PRINCIPAL ROJO -->
-                        <tr style="background-color: #ff0037; color: white; font-weight: bold; text-align: center; height: 30px;">
-                            <th colspan="6" style="font-size: 14px;">REGISTRO Y CONTROL DE HORAS EXTRAS - DEL 01 AL ${totalDiasMes} DE ${nombreMesStr} DEL ${anio}</th>
-                        </tr>
-                        <!-- DATOS PERSONALES -->
-                        <tr style="font-weight: bold; height: 24px;">
-                            <td colspan="4" style="background-color: #ffffff; text-align: left; padding-left: 8px;">APELLIDOS Y NOMBRES: DIEGO VASQUEZ IRIBARREN</td>
-                            <td colspan="2" style="background-color: #ffffff; text-align: left; padding-left: 8px;">DNI: 45866530</td>
-                        </tr>
-                        <!-- CABECERAS DE TABLA -->
-                        <tr style="background-color: #f1f3f5; font-weight: bold; text-align: center; height: 26px;">
-                            <th>FECHA</th>
-                            <th>ZONA -BASE</th>
-                            <th>HORARIO NORMAL</th>
-                            <th>HORARIO EXTRA EN ZONA</th>
-                            <th>TOTAL DE HORAS EXTRAS</th>
-                            <th>OBSERVACIÓN</th>
-                        </tr>
-            `;
-
-            let sumaTotalHoras = 0;
-
-            for (let dia = 1; dia <= totalDiasMes; dia++) {
-                const diaStr = String(dia).padStart(2, '0');
-                const mesStr = String(mes).padStart(2, '0');
-                const fechaIso = `${anio}-${mesStr}-${diaStr}`;
-                const fechaFormateada = `${diaStr}-${mes.toString().toLowerCase()}-${anio.toString().slice(-2)}`; // Ej: 01-sep-26 (ajustable)
-
-                // Formato de fecha limpio tipo dd-mmm-yy
-                const mesesCortos = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
-                const fechaTexto = `${diaStr}-${mesesCortos[mes - 1]}-${anio.toString().slice(-2)}`;
-
-                const reg = registros.find(r => r.fecha === fechaIso);
-
-                if (reg) {
-                    if (reg.esDescanso) {
-                        contenidoTabla += `
-                            <tr>
-                                <td style="text-align: center;">${fechaTexto}</td>
-                                <td colspan="4" style="text-align: center; font-weight: bold; color: #64748b;">DÍA DE DESCANSO</td>
-                                <td>${reg.observacion || '-'}</td>
-                            </tr>
-                        `;
-                    } else {
-                        sumaTotalHoras += reg.totalHoras || 0;
-                        contenidoTabla += `
-                            <tr>
-                                <td style="text-align: center;">${fechaTexto}</td>
-                                <td style="text-align: center;">${reg.zona || '-'}</td>
-                                <td style="text-align: center;">${reg.horarioNormal || '-'}</td>
-                                <td style="text-align: center;">${reg.horarioExtra || '-'}</td>
-                                <td style="text-align: center;">${reg.totalHoras > 0 ? reg.totalHoras + ' h' : '-'}</td>
-                                <td>${reg.observacion || '-'}</td>
-                            </tr>
-                        `;
-                    }
-                } else {
-                    contenidoTabla += `
-                        <tr>
-                            <td style="text-align: center;">${fechaTexto}</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    `;
-                }
-            }
-
-            // FILA TOTAL
-            contenidoTabla += `
-                <tr style="font-weight: bold; background-color: #f8fafc;">
-                    <td style="text-align: center;">TOTAL</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td style="text-align: center;">${sumaTotalHoras > 0 ? sumaTotalHoras + ' h' : ''}</td>
-                    <td></td>
+        return `
+            <table border="1" style="border-collapse:collapse; width:100%;">
+                <tr style="background-color:#ff0037; color:white; text-align:center;">
+                    <th colspan="6">REGISTRO Y CONTROL DE HORAS EXTRAS - DEL 01 AL ${totalDias} DE ${MESES[mes - 1]} DEL ${anio}</th>
                 </tr>
-                <!-- ESPACIOS PARA FIRMAS -->
-                <tr style="height: 40px;"><td colspan="6"></td></tr>
+                <tr style="font-weight:bold;">
+                    <td colspan="4">APELLIDOS Y NOMBRES: ${esc(DATOS_USUARIO.nombre)}</td>
+                    <td colspan="2">DNI: ${esc(DATOS_USUARIO.dni)}</td>
+                </tr>
+                <tr style="background-color:#f1f3f5; font-weight:bold; text-align:center;">
+                    <th>FECHA</th><th>ZONA -BASE</th><th>HORARIO NORMAL</th><th>HORARIO EXTRA EN ZONA</th><th>TOTAL DE HORAS EXTRAS</th><th>OBSERVACIÓN</th>
+                </tr>
+                ${filas}
+                <tr style="font-weight:bold; background-color:#f8fafc;">
+                    <td ${td}>TOTAL</td><td></td><td></td><td></td><td ${td}>${sumaHoras > 0 ? sumaHoras + ' h' : ''}</td><td></td>
+                </tr>
+                <tr style="height:50px;"><td colspan="6" style="border:none;"></td></tr>
                 <tr>
-                    <td colspan="3" style="text-align: center; border-top: 1px solid #000; font-weight: bold;">Vº Bº COORDINADOR</td>
-                    <td colspan="3" style="text-align: center; border-top: 1px solid #000; font-weight: bold;">PROCURADOR</td>
+                    <td colspan="3" ${td}><b>Vº Bº COORDINADOR</b></td>
+                    <td colspan="3" ${td}><b>PROCURADOR</b></td>
                 </tr>
-                </table>
-                </body>
-                </html>
-            `;
-
-            const blob = new Blob([contenidoTabla], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Control_Horas_Extras_${mesValue}.xls`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        });
+            </table>`;
     }
 
-    if (btnExportarPdf) {
-        btnExportarPdf.addEventListener('click', () => {
-            const mesValue = selectMes ? selectMes.value : '2026-11';
-            const [anio, mes] = mesValue.split('-').map(Number);
-            const totalDiasMes = new Date(anio, mes, 0).getDate();
-            const mesesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
-            const nombreMesStr = mesesNombres[mes - 1];
-            const mesesCortos = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+    $('btnExportarExcel').addEventListener('click', () => {
+        const html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta charset="UTF-8"></head>
+            <body>${tablaReporte()}</body></html>`;
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        descargar(blob, `Control_Horas_Extras_${selectMes.value}.xls`);
+    });
 
-            let ventanaPdf = window.open('', '_blank');
-            let htmlPdf = `
-                <html>
-                <head>
-                    <title>Control de Horas Extras</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 15px; color: #000; }
-                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
-                        th, td { border: 1px solid #000; padding: 4px; text-align: center; }
-                        .titulo { background-color: #ff0037; color: white; font-weight: bold; font-size: 12px; padding: 8px; text-align: center; }
-                        .datos { font-weight: bold; text-align: left; padding: 6px; background: #fff; }
-                        .cabecera-tabla { background-color: #f1f3f5; font-weight: bold; }
-                        .firma-container { margin-top: 50px; width: 100%; display: flex; justify-content: space-around; }
-                        .firma-linea { width: 35%; border-top: 1px solid #000; text-align: center; padding-top: 5px; font-weight: bold; font-size: 11px; }
-                    </style>
-                </head>
-                <body>
-                    <table>
-                        <tr>
-                            <td colspan="6" class="titulo">REGISTRO Y CONTROL DE HORAS EXTRAS - DEL 01 AL ${totalDiasMes} DE ${nombreMesStr} DEL ${anio}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="datos">APELLIDOS Y NOMBRES: DIEGO VASQUEZ IRIBARREN</td>
-                            <td colspan="2" class="datos">DNI: 45866530</td>
-                        </tr>
-                        <tr class="cabecera-tabla">
-                            <th>FECHA</th>
-                            <th>ZONA -BASE</th>
-                            <th>HORARIO NORMAL</th>
-                            <th>HORARIO EXTRA EN ZONA</th>
-                            <th>TOTAL DE HORAS EXTRAS</th>
-                            <th>OBSERVACIÓN</th>
-                        </tr>
-            `;
+    $('btnExportarPdf').addEventListener('click', () => {
+        const ventana = window.open('', '_blank');
+        if (!ventana) {
+            alert('Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio e inténtalo de nuevo.');
+            return;
+        }
+        ventana.document.write(`
+            <html><head><title>Control de Horas Extras</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 15px; color: #000; }
+                table { font-size: 10px; }
+                th, td { padding: 4px; }
+            </style></head>
+            <body>${tablaReporte()}</body></html>`);
+        ventana.document.close();
+        ventana.focus();
+        setTimeout(() => ventana.print(), 500);
+    });
 
-            let sumaTotalHoras = 0;
+    function descargar(blob, nombre) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
-            for (let dia = 1; dia <= totalDiasMes; dia++) {
-                const diaStr = String(dia).padStart(2, '0');
-                const mesStr = String(mes).padStart(2, '0');
-                const fechaIso = `${anio}-${mesStr}-${diaStr}`;
-                const fechaTexto = `${diaStr}-${mesesCortos[mes - 1]}-${anio.toString().slice(-2)}`;
+    // ==========================================
+    // 7. COPIA DE SEGURIDAD
+    // ==========================================
+    $('btnDescargarCopia').addEventListener('click', () => {
+        const copia = {
+            registros,
+            config: JSON.parse(localStorage.getItem(CLAVE_CONFIG)) || {}
+        };
+        const blob = new Blob([JSON.stringify(copia, null, 2)], { type: 'application/json' });
+        const hoy = new Date().toISOString().slice(0, 10);
+        descargar(blob, `copia_horas_extras_${hoy}.json`);
+    });
 
-                const reg = registrations = registros.find(r => r.fecha === fechaIso);
+    $('btnCargarCopia').addEventListener('click', () => {
+        const selector = document.createElement('input');
+        selector.type = 'file';
+        selector.accept = '.json,application/json';
 
-                if (reg) {
-                    if (reg.esDescanso) {
-                        htmlPdf += `
-                            <tr>
-                                <td>${fechaTexto}</td>
-                                <td colspan="4" style="font-weight: bold; color: #555;">DÍA DE DESCANSO</td>
-                                <td>${reg.observacion || '-'}</td>
-                            </tr>
-                        `;
-                    } else {
-                        sumaTotalHoras += reg.totalHoras || 0;
-                        htmlPdf += `
-                            <tr>
-                                <td>${fechaTexto}</td>
-                                <td>${reg.zona || '-'}</td>
-                                <td>${reg.horarioNormal || '-'}</td>
-                                <td>${reg.horarioExtra || '-'}</td>
-                                <td>${reg.totalHoras > 0 ? reg.totalHoras + ' h' : '-'}</td>
-                                <td>${reg.observacion || '-'}</td>
-                            </tr>
-                        `;
+        selector.addEventListener('change', () => {
+            const archivo = selector.files[0];
+            if (!archivo) return;
+
+            const lector = new FileReader();
+            lector.onload = () => {
+                try {
+                    const datos = JSON.parse(lector.result);
+                    if (!Array.isArray(datos.registros)) throw new Error('formato');
+                    if (!confirm('Esto reemplazará los datos actuales de este dispositivo. ¿Continuar?')) return;
+
+                    registros = datos.registros;
+                    if (datos.config) {
+                        localStorage.setItem(CLAVE_CONFIG, JSON.stringify(datos.config));
+                        aplicarConfig(datos.config);
                     }
-                } else {
-                    htmlPdf += `
-                        <tr>
-                            <td>${fechaTexto}</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    `;
+                    guardarYActualizar();
+                    alert('Copia cargada correctamente.');
+                } catch (err) {
+                    alert('El archivo no es una copia válida.');
                 }
-            }
-
-            htmlPdf += `
-                        <tr style="font-weight: bold; background-color: #f8fafc;">
-                            <td>TOTAL</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td>${sumaTotalHoras > 0 ? sumaTotalHoras + ' h' : ''}</td>
-                            <td></td>
-                        </tr>
-                    </table>
-
-                    <br><br><br><br>
-                    <table style="border: none; width: 100%;">
-                        <tr style="border: none;">
-                            <td style="border: none; width: 40%; border-top: 1px solid #000; font-weight: bold; padding-top: 8px;">Vº Bº COORDINADOR</td>
-                            <td style="border: none; width: 20%;"></td>
-                            <td style="border: none; width: 40%; border-top: 1px solid #000; font-weight: bold; padding-top: 8px;">PROCURADOR</td>
-                        </tr>
-                    </table>
-                </body>
-                </html>
-            `;
-
-            ventanaPdf.document.write(htmlPdf);
-            ventanaPdf.document.close();
-            ventanaPdf.focus();
-            
-            setTimeout(() => {
-                ventanaPdf.print();
-            }, 500);
+            };
+            lector.readAsText(archivo);
         });
-    }
-    // Inicializar al cargar la página
+
+        selector.click();
+    });
+
+    // ==========================================
+    // 8. INICIO
+    // ==========================================
     recalcularTodo();
 });
